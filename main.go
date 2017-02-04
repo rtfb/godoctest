@@ -16,7 +16,14 @@ type commentData struct {
 	fileName     string
 	file         *ast.File
 	comments     map[int]*ast.CommentGroup
-	funcComments map[string]*ast.CommentGroup
+	funcComments map[string]funcData
+}
+
+type funcData struct {
+	declLine    int
+	commentLine int
+	decl        *ast.FuncType
+	comment     *ast.CommentGroup
 }
 
 func containsTestAnnotation(cg *ast.CommentGroup) bool {
@@ -51,16 +58,22 @@ func extractComments(pkgs map[string]*ast.Package, fs *token.FileSet) []*comment
 
 func extractFuncs(cds []*commentData, fs *token.FileSet) {
 	for _, cd := range cds {
-		cd.funcComments = map[string]*ast.CommentGroup{}
+		cd.funcComments = map[string]funcData{}
 		for _, d := range cd.file.Decls {
-			declLine := fs.Position(d.Pos()).Line
-			_, found := cd.comments[declLine+1]
-			if !found {
-				continue
-			}
 			switch typedDecl := d.(type) {
 			case *ast.FuncDecl:
-				cd.funcComments[typedDecl.Name.Name] = cd.comments[declLine+1]
+				declLine := fs.Position(d.Pos()).Line
+				endLine := fs.Position(typedDecl.Type.End()).Line
+				_, found := cd.comments[endLine+1]
+				if !found {
+					continue
+				}
+				cd.funcComments[typedDecl.Name.Name] = funcData{
+					declLine:    declLine,
+					commentLine: endLine + 1,
+					decl:        typedDecl.Type,
+					comment:     cd.comments[endLine+1],
+				}
 			}
 		}
 		cd.comments = nil // release for GC
@@ -93,7 +106,7 @@ func main() {
 	for _, cd := range cds {
 		for k, v := range cd.funcComments {
 			fmt.Printf("%s.%s:%d: %s\n%s\n", cd.pkg.Name, cd.fileName,
-				fs.Position(v.Pos()).Line-1, k, cgToStr(v))
+				v.declLine, k, cgToStr(v.comment))
 		}
 	}
 }
