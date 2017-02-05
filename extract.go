@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
 	"go/token"
 	"strconv"
@@ -88,20 +89,95 @@ func cgToStr(cg *ast.CommentGroup) string {
 	return s.String()
 }
 
+func extractTestValues(cg *ast.CommentGroup) string {
+	blockComment := strings.HasPrefix(cg.List[0].Text, "/*")
+	var s bytes.Buffer
+	if blockComment {
+		s1 := strings.TrimPrefix(cg.List[0].Text, "/*")
+		s2 := strings.TrimSuffix(s1, "*/")
+		s3 := strings.TrimPrefix(strings.Trim(s2, " \t\n"), "@test = {")
+		s.WriteString(strings.TrimSuffix(strings.Trim(s3, " \t\n"), "}"))
+	} else {
+		for _, c := range cg.List {
+			if strings.Contains(c.Text, "@test =") {
+				continue
+			}
+			if strings.Trim(c.Text[2:], " ") == "}" {
+				continue
+			}
+			s.WriteString(c.Text[2:])
+		}
+	}
+	return s.String()
+}
+
 type templateFuncData struct {
-	FuncName string
-	Hash     string
+	FuncName     string
+	Hash         string
+	StructFields string
+	Params       string
+	TestValues   string
+	ReturnValues string
+	Asserts      string
 }
 
 func prepForTemplate(fcm map[string]funcData) []templateFuncData {
 	var result []templateFuncData
 	i := 0
-	for k := range fcm {
+	for k, v := range fcm {
 		i++
+		structFields, params := makeStructFieldsAndParams(v.decl.Params)
+		resultFields, retVals, asserts := makeResults(v.decl.Results)
 		result = append(result, templateFuncData{
-			FuncName: k,
-			Hash:     strconv.Itoa(i),
+			FuncName:     k,
+			Hash:         strconv.Itoa(i), // TODO: come up with smth better
+			StructFields: structFields + "\n" + resultFields,
+			Params:       params,
+			ReturnValues: retVals,
+			Asserts:      asserts,
+			TestValues:   extractTestValues(v.comment),
 		})
 	}
 	return result
+}
+
+func makeStructFieldsAndParams(params *ast.FieldList) (string, string) {
+	var fieldLines []string
+	var args []string
+	for i, f := range params.List {
+		fieldName := fmt.Sprintf("f%d", i)
+		fieldLines = append(fieldLines, fmt.Sprintf("%s %s", fieldName,
+			makeTypeStr(f.Type)))
+		args = append(args, "test."+fieldName)
+	}
+	return strings.Join(fieldLines, "\n"), strings.Join(args, ", ")
+}
+
+// TODO: it can be pointers, variadic params and such. Lots of work remaining
+// here. But maybe I'm overcomplicating? Maybe just copy source code bytes from
+// the range [typeExpr.Pos():typeExpr.End()]?
+func makeTypeStr(typeExpr ast.Expr) string {
+	switch typedExpr := typeExpr.(type) {
+	case *ast.Ident:
+		return typedExpr.Name
+	default:
+		panic("TODO")
+	}
+}
+
+// TODO: results may be nil. Make sure this is handled
+func makeResults(results *ast.FieldList) (string, string, string) {
+	var fieldLines []string
+	var resultList []string
+	var asserts []string
+	for i, f := range results.List {
+		fieldLines = append(fieldLines, fmt.Sprintf("e%d %s", i,
+			makeTypeStr(f.Type)))
+		resultList = append(resultList, fmt.Sprintf("r%d", i))
+		asserts = append(asserts, fmt.Sprintf("assert.Equal(t, test.e%d, r%d)", i, i))
+	}
+	j1 := strings.Join(fieldLines, "\n")
+	j2 := strings.Join(resultList, ", ")
+	j3 := strings.Join(asserts, "\n")
+	return j1, j2, j3
 }

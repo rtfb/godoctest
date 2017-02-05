@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"html/template"
+	"text/template"
 )
 
 const (
@@ -10,6 +10,7 @@ const (
 
 import (
 	"testing"
+	"github.com/stretchr/testify/assert"
 )
 
 {{range .FuncComments}}
@@ -17,15 +18,15 @@ import (
 {{end}}
 `
 	singleTestTmpl = `{{define "singleTest"}}
-	func Test_{{.FuncName}}_gdc{{.Hash}}(t *testing.T) {
+	func Test_{{.FuncName}}_gdt{{.Hash}}(t *testing.T) {
 		tests := []struct{
-			{StructFields}
+			{{.StructFields}}
 		}{
-			{TestValues}
+			{{print .TestValues}}
 		}
 		for _, test := range tests {
-			{ReturnValues} := {{.FuncName}}({Params})
-			{Asserts}
+			{{.ReturnValues}} := {{.FuncName}}({{.Params}})
+			{{.Asserts}}
 		}
 	}
 {{end}}

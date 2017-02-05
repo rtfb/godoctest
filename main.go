@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"go/parser"
 	"go/token"
 	"log"
@@ -21,11 +20,5 @@ func main() {
 	}
 	fcs := extractComments(pkgs, fs)
 	extractFuncs(fcs, fs)
-	for _, fc := range fcs {
-		for k, v := range fc.funcComments {
-			fmt.Printf("%s.%s:%d: %s\n%s\n", fc.pkg.Name, fc.fileName,
-				v.declLine, k, cgToStr(v.comment))
-		}
-	}
 	println(genPkgTests(fcs[0]))
 }
