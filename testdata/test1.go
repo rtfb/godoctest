@@ -25,6 +25,14 @@ func testFunc2(param string) string {
 			{"baz", "quux"},
 		}
 	*/
+	switch param {
+	case "":
+		return ""
+	case "foo":
+		return "bar"
+	case "baz":
+		return "quux"
+	}
 	return ""
 }
 
@@ -36,7 +44,7 @@ func multiline(aVeryLongParameterOne string, aVeryLongParameterTwo float64,
 			{"param1", 3.14, "param2", "return value", nil},
 		}
 	*/
-	return "", nil
+	return "return value", nil
 }
 
 func main() {
