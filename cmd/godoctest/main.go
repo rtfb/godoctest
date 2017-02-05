@@ -8,9 +8,9 @@ import (
 	"github.com/rtfb/godoctest"
 )
 
-func runGoTest() {
+func runGoTest(workdir string) {
 	cmd := exec.Command("go", "test")
-	cmd.Dir = "testdata"
+	cmd.Dir = workdir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -32,5 +32,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	runGoTest()
+	runGoTest("testdata")
 }

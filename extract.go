@@ -28,7 +28,7 @@ func (e *Extractor) Run(dir string) []*fileComments {
 	include := func(info os.FileInfo) bool {
 		return strings.HasSuffix(info.Name(), ".go")
 	}
-	pkgs, err := parser.ParseDir(e.fset, "testdata", include, parser.ParseComments)
+	pkgs, err := parser.ParseDir(e.fset, dir, include, parser.ParseComments)
 	if err != nil {
 		log.Fatal(err)
 	}
