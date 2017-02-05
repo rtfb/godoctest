@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-type commentData struct {
+type fileComments struct {
 	pkg          *ast.Package
 	fileName     string
 	file         *ast.File
@@ -35,48 +35,48 @@ func containsTestAnnotation(cg *ast.CommentGroup) bool {
 	return false
 }
 
-func extractComments(pkgs map[string]*ast.Package, fs *token.FileSet) []*commentData {
-	var cds []*commentData
+func extractComments(pkgs map[string]*ast.Package, fs *token.FileSet) []*fileComments {
+	var fcs []*fileComments
 	for _, v := range pkgs {
 		for fk, fv := range v.Files {
-			var cd commentData
-			cd.comments = map[int]*ast.CommentGroup{}
-			cd.pkg = v
-			cd.fileName = fk
-			cd.file = fv
+			var fc fileComments
+			fc.comments = map[int]*ast.CommentGroup{}
+			fc.pkg = v
+			fc.fileName = fk
+			fc.file = fv
 			for _, c := range fv.Comments {
 				if !containsTestAnnotation(c) {
 					continue
 				}
-				cd.comments[fs.Position(c.Pos()).Line] = c
+				fc.comments[fs.Position(c.Pos()).Line] = c
 			}
-			cds = append(cds, &cd)
+			fcs = append(fcs, &fc)
 		}
 	}
-	return cds
+	return fcs
 }
 
-func extractFuncs(cds []*commentData, fs *token.FileSet) {
-	for _, cd := range cds {
-		cd.funcComments = map[string]funcData{}
-		for _, d := range cd.file.Decls {
+func extractFuncs(fcs []*fileComments, fs *token.FileSet) {
+	for _, fc := range fcs {
+		fc.funcComments = map[string]funcData{}
+		for _, d := range fc.file.Decls {
 			switch typedDecl := d.(type) {
 			case *ast.FuncDecl:
 				declLine := fs.Position(d.Pos()).Line
 				endLine := fs.Position(typedDecl.Type.End()).Line
-				_, found := cd.comments[endLine+1]
+				_, found := fc.comments[endLine+1]
 				if !found {
 					continue
 				}
-				cd.funcComments[typedDecl.Name.Name] = funcData{
+				fc.funcComments[typedDecl.Name.Name] = funcData{
 					declLine:    declLine,
 					commentLine: endLine + 1,
 					decl:        typedDecl.Type,
-					comment:     cd.comments[endLine+1],
+					comment:     fc.comments[endLine+1],
 				}
 			}
 		}
-		cd.comments = nil // release for GC
+		fc.comments = nil // release for GC
 	}
 }
 
@@ -101,11 +101,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cds := extractComments(pkgs, fs)
-	extractFuncs(cds, fs)
-	for _, cd := range cds {
-		for k, v := range cd.funcComments {
-			fmt.Printf("%s.%s:%d: %s\n%s\n", cd.pkg.Name, cd.fileName,
+	fcs := extractComments(pkgs, fs)
+	extractFuncs(fcs, fs)
+	for _, fc := range fcs {
+		for k, v := range fc.funcComments {
+			fmt.Printf("%s.%s:%d: %s\n%s\n", fc.pkg.Name, fc.fileName,
 				v.declLine, k, cgToStr(v.comment))
 		}
 	}
