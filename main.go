@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -91,6 +92,24 @@ func cgToStr(cg *ast.CommentGroup) string {
 	return s.String()
 }
 
+type templateFuncData struct {
+	FuncName string
+	Hash     string
+}
+
+func prepForTemplate(fcm map[string]funcData) []templateFuncData {
+	var result []templateFuncData
+	i := 0
+	for k := range fcm {
+		i++
+		result = append(result, templateFuncData{
+			FuncName: k,
+			Hash:     strconv.Itoa(i),
+		})
+	}
+	return result
+}
+
 func main() {
 	fs := token.NewFileSet()
 	// include tells parser.ParseDir which files to include.
@@ -109,4 +128,5 @@ func main() {
 				v.declLine, k, cgToStr(v.comment))
 		}
 	}
+	println(genPkgTests(fcs[0]))
 }
