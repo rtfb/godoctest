@@ -1,13 +1,41 @@
-package main
+package godoctest
 
 import (
 	"bytes"
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"go/token"
+	"log"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 )
+
+type Extractor struct {
+	fset *token.FileSet
+}
+
+func NewExtractor() *Extractor {
+	return &Extractor{
+		fset: token.NewFileSet(),
+	}
+}
+
+func (e *Extractor) Run(dir string) []*fileComments {
+	// include tells parser.ParseDir which files to include.
+	include := func(info os.FileInfo) bool {
+		return strings.HasSuffix(info.Name(), ".go")
+	}
+	pkgs, err := parser.ParseDir(e.fset, "testdata", include, parser.ParseComments)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fcs := extractComments(pkgs, e.fset)
+	extractFuncs(fcs, e.fset)
+	return fcs
+}
 
 type fileComments struct {
 	pkg          *ast.Package
@@ -15,6 +43,12 @@ type fileComments struct {
 	file         *ast.File
 	comments     map[int]*ast.CommentGroup
 	funcComments map[string]funcData
+}
+
+func (fc *fileComments) TestFileName() string {
+	fn := fc.fileName
+	ext := path.Ext(fn)
+	return fn[:len(fn)-len(ext)] + "_gdt_test.go"
 }
 
 type funcData struct {

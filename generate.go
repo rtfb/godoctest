@@ -1,4 +1,4 @@
-package main
+package godoctest
 
 import (
 	"bytes"
@@ -33,7 +33,7 @@ import (
 `
 )
 
-func genPkgTests(fc *fileComments) string {
+func GenPkgTests(fc *fileComments) string {
 	t := template.Must(template.New("File tests template").Parse(testFileTmpl))
 	t = template.Must(t.Parse(singleTestTmpl))
 	var buf bytes.Buffer
