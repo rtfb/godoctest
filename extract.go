@@ -145,46 +145,56 @@ func extractTestValues(cg *ast.CommentGroup) string {
 	return s.String()
 }
 
-type templateFuncData struct {
-	FuncName     string
-	Hash         string
-	StructFields string
-	Params       string
-	TestValues   string
-	ReturnValues string
-	Asserts      string
+type intermediateData struct {
+	FuncName       string
+	Hash           string
+	ParamTypeDefs  []*typeDef
+	RetValTypeDefs []*typeDef
+	TestValues     string
+	ReturnValues   string
+	Asserts        string
 }
 
-func prepForTemplate(fcm map[string]funcData) []templateFuncData {
-	var result []templateFuncData
+func extract(fcm map[string]funcData) []intermediateData {
+	var result []intermediateData
 	i := 0
 	for k, v := range fcm {
 		i++
-		structFields, params := makeStructFieldsAndParams(v.decl.Params)
-		resultFields, retVals, asserts := makeResults(v.decl.Results)
-		result = append(result, templateFuncData{
-			FuncName:     k,
-			Hash:         strconv.Itoa(i), // TODO: come up with smth better
-			StructFields: structFields + "\n" + resultFields,
-			Params:       params,
-			ReturnValues: retVals,
-			Asserts:      asserts,
-			TestValues:   extractTestValues(v.comment),
+		typeDefs := extractTypeDefs(v.decl.Params)
+		retValDefs, retVals, asserts := extractRetValDefs(v.decl.Results)
+		result = append(result, intermediateData{
+			FuncName:       k,
+			Hash:           strconv.Itoa(i), // TODO: come up with smth better
+			ParamTypeDefs:  typeDefs,
+			RetValTypeDefs: retValDefs,
+			ReturnValues:   retVals,
+			Asserts:        asserts,
+			TestValues:     extractTestValues(v.comment),
 		})
 	}
 	return result
 }
 
-func makeStructFieldsAndParams(params *ast.FieldList) (string, string) {
-	var fieldLines []string
-	var args []string
-	for i, f := range params.List {
-		fieldName := fmt.Sprintf("f%d", i)
-		typeDef := makeTypeDef(f.Type)
-		fieldLines = append(fieldLines, typeDef.field(fieldName))
-		args = append(args, typeDef.arg(fieldName))
+func extractTypeDefs(params *ast.FieldList) []*typeDef {
+	var result []*typeDef
+	for _, f := range params.List {
+		result = append(result, makeTypeDef(f.Type))
 	}
-	return strings.Join(fieldLines, "\n"), strings.Join(args, ", ")
+	return result
+}
+
+func extractRetValDefs(results *ast.FieldList) ([]*typeDef, string, string) {
+	var retValDefs []*typeDef
+	var resultList []string
+	var asserts []string
+	for i, f := range results.List {
+		retValDefs = append(retValDefs, makeTypeDef(f.Type))
+		resultList = append(resultList, fmt.Sprintf("r%d", i))
+		asserts = append(asserts, fmt.Sprintf("assert.Equal(t, test.e%d, r%d)", i, i))
+	}
+	j2 := strings.Join(resultList, ", ")
+	j3 := strings.Join(asserts, "\n")
+	return retValDefs, j2, j3
 }
 
 type typeDef struct {
@@ -270,21 +280,4 @@ func makeTypeStr(typeExpr ast.Expr) string {
 	default:
 		panic("TODO")
 	}
-}
-
-// TODO: results may be nil. Make sure this is handled
-func makeResults(results *ast.FieldList) (string, string, string) {
-	var fieldLines []string
-	var resultList []string
-	var asserts []string
-	for i, f := range results.List {
-		fieldLines = append(fieldLines, fmt.Sprintf("e%d %s", i,
-			makeTypeStr(f.Type)))
-		resultList = append(resultList, fmt.Sprintf("r%d", i))
-		asserts = append(asserts, fmt.Sprintf("assert.Equal(t, test.e%d, r%d)", i, i))
-	}
-	j1 := strings.Join(fieldLines, "\n")
-	j2 := strings.Join(resultList, ", ")
-	j3 := strings.Join(asserts, "\n")
-	return j1, j2, j3
 }
