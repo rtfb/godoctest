@@ -70,7 +70,7 @@ func prepForTemplate(id []intermediateData) []templateFuncData {
 
 			TestValues:   d.TestValues,
 			ReturnValues: makeReturnValuesLHS(len(d.RetValTypeDefs)),
-			Asserts:      d.Asserts,
+			Asserts:      makeAsserts(len(d.RetValTypeDefs)),
 		})
 	}
 	return result
@@ -107,13 +107,24 @@ func makeParams(paramTypeDefs []*typeDef) string {
 	return result.String()
 }
 
-func makeReturnValuesLHS(nParams int) string {
+func makeReturnValuesLHS(nReturnValues int) string {
 	result := bytes.Buffer{}
-	for i := 0; i < nParams; i++ {
+	for i := 0; i < nReturnValues; i++ {
 		if i > 0 {
 			result.WriteString(", ")
 		}
 		result.WriteString("r" + strconv.Itoa(i))
+	}
+	return result.String()
+}
+
+func makeAsserts(nReturnValues int) string {
+	result := bytes.Buffer{}
+	for i := 0; i < nReturnValues; i++ {
+		if i > 0 {
+			result.WriteByte('\n')
+		}
+		result.WriteString(fmt.Sprintf("assert.Equal(t, test.e%d, r%d)", i, i))
 	}
 	return result.String()
 }
