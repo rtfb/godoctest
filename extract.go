@@ -180,11 +180,67 @@ func makeStructFieldsAndParams(params *ast.FieldList) (string, string) {
 	var args []string
 	for i, f := range params.List {
 		fieldName := fmt.Sprintf("f%d", i)
-		fieldLines = append(fieldLines, fmt.Sprintf("%s %s", fieldName,
-			makeTypeStr(f.Type)))
-		args = append(args, "test."+fieldName)
+		typeDef := makeTypeDef(f.Type)
+		fieldLines = append(fieldLines, typeDef.field(fieldName))
+		args = append(args, typeDef.arg(fieldName))
 	}
 	return strings.Join(fieldLines, "\n"), strings.Join(args, ", ")
+}
+
+type typeDef struct {
+	typeName   string
+	isPtr      bool
+	isNil      bool
+	isEllipsis bool
+}
+
+func (d *typeDef) field(fieldName string) string {
+	if d.isEllipsis {
+		return fieldName + " []" + d.typeName
+	}
+	if d.isPtr {
+		return fieldName + " *" + d.typeName
+	}
+	return fieldName + " " + d.typeName
+}
+
+func (d *typeDef) arg(fieldName string) string {
+	arg := "test." + fieldName
+	if d.isEllipsis {
+		arg += "..."
+	}
+	return arg
+}
+
+func makeTypeDef(typeExpr ast.Expr) *typeDef {
+	switch typedExpr := typeExpr.(type) {
+	case *ast.Ident:
+		return &typeDef{
+			typeName: typedExpr.Name,
+		}
+	case *ast.StarExpr:
+		switch typedExpr2 := typedExpr.X.(type) {
+		case *ast.Ident:
+			return &typeDef{
+				typeName: typedExpr2.Name,
+				isPtr:    true,
+			}
+		default:
+			panic("Should this be handled?")
+		}
+	case *ast.Ellipsis:
+		switch typedExpr2 := typedExpr.Elt.(type) {
+		case *ast.Ident:
+			return &typeDef{
+				typeName:   typedExpr2.Name,
+				isEllipsis: true,
+			}
+		default:
+			panic("Should this be handled?")
+		}
+	default:
+		panic("TODO")
+	}
 }
 
 // TODO: it can be pointers, variadic params and such. Lots of work remaining
@@ -194,6 +250,23 @@ func makeTypeStr(typeExpr ast.Expr) string {
 	switch typedExpr := typeExpr.(type) {
 	case *ast.Ident:
 		return typedExpr.Name
+	case *ast.StarExpr:
+		switch typedExpr2 := typedExpr.X.(type) {
+		case *ast.Ident:
+			// TODO: looks like to handle pointers I'll need to duplicate each
+			// field, having a fN for the value and a pN for a pointer to it,
+			// allowing pN to be nil.
+			return "*" + typedExpr2.Name
+		default:
+			panic("Should this be handled?")
+		}
+	case *ast.Ellipsis:
+		switch typedExpr2 := typedExpr.Elt.(type) {
+		case *ast.Ident:
+			return "[]" + typedExpr2.Name
+		default:
+			panic("Should this be handled?")
+		}
 	default:
 		panic("TODO")
 	}

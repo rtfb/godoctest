@@ -1,6 +1,9 @@
 package testpkg
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func untestFunc() {
 	/*
@@ -64,6 +67,17 @@ func fibonacci(n int) int {
 		return 1
 	}
 	return fibonacci(n-1) + fibonacci(n-2)
+}
+
+func varargs(strs ...string) string {
+	/*
+		@test = {
+			{[]string{}, ""},
+			{[]string{"a"}, "a"},
+			{[]string{"a", "b"}, "a b"},
+		}
+	*/
+	return strings.Join(strs, " ")
 }
 
 func main() {
