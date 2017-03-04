@@ -2,9 +2,9 @@ package godoctest
 
 import (
 	"bytes"
-	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/scanner"
 	"go/token"
 	"log"
 	"os"
@@ -123,7 +123,47 @@ func cgToStr(cg *ast.CommentGroup) string {
 	return s.String()
 }
 
-func extractTestValues(cg *ast.CommentGroup) string {
+func tokenize(b []byte) string {
+	var s scanner.Scanner
+	fset := token.NewFileSet()
+	file := fset.AddFile("", fset.Base(), len(b))
+	s.Init(file, b, nil /* no error handler */, scanner.ScanComments)
+	var tbl bytes.Buffer
+	var depth, i int
+	for {
+		_, tok, lit := s.Scan()
+		if tok == token.EOF {
+			break
+		}
+		if tok == token.LBRACE {
+			if i > 0 && depth == 0 {
+				tbl.WriteString("\n\t\t\t")
+			}
+			depth++
+		}
+		if tok == token.RBRACE {
+			depth--
+		}
+		switch tok {
+		case token.IDENT:
+			tbl.WriteString(lit)
+		case token.STRING, token.INT, token.FLOAT, token.IMAG, token.CHAR:
+			tbl.WriteString(lit)
+		case token.COMMA:
+			if depth == 0 {
+				tbl.WriteByte(',')
+			} else {
+				tbl.WriteString(", ")
+			}
+		default:
+			tbl.WriteString(tok.String())
+		}
+		i++
+	}
+	return tbl.String()
+}
+
+func extractTestValues(typeDefs, retValDefs []*typeDef, cg *ast.CommentGroup) string {
 	blockComment := strings.HasPrefix(cg.List[0].Text, "/*")
 	var s bytes.Buffer
 	if blockComment {
@@ -142,7 +182,7 @@ func extractTestValues(cg *ast.CommentGroup) string {
 			s.WriteString(c.Text[2:])
 		}
 	}
-	return s.String()
+	return tokenize(s.Bytes())
 }
 
 type intermediateData struct {
@@ -165,7 +205,7 @@ func extract(fcm map[string]funcData) []intermediateData {
 			Hash:           strconv.Itoa(i), // TODO: come up with smth better
 			ParamTypeDefs:  typeDefs,
 			RetValTypeDefs: retValDefs,
-			TestValues:     extractTestValues(v.comment),
+			TestValues:     extractTestValues(typeDefs, retValDefs, v.comment),
 		})
 	}
 	return result
@@ -243,6 +283,7 @@ func makeTypeDef(typeExpr ast.Expr) *typeDef {
 	}
 }
 
+// XXX: no longer used
 // TODO: it can be pointers, variadic params and such. Lots of work remaining
 // here. But maybe I'm overcomplicating? Maybe just copy source code bytes from
 // the range [typeExpr.Pos():typeExpr.End()]?
