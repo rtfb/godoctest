@@ -21,18 +21,18 @@ import (
 {{end}}
 `
 	singleTestTmpl = `{{define "singleTest"}}
-	func Test_{{.FuncName}}_gdt{{.Hash}}(t *testing.T) {
-		{{print .PtrDataTable}}
-		tests := []struct{
-			{{.StructFields}}
-		}{
-			{{print .TestTableValues}}
-		}
-		for _, test := range tests {
-			{{.ReturnValues}} := {{.FuncName}}({{.Params}})
-			{{.Asserts}}
-		}
+func Test_{{.FuncName}}_gdt{{.Hash}}(t *testing.T) {
+	{{print .PtrDataTable}}
+	tests := []struct{
+		{{.StructFields}}
+	}{
+		{{print .TestTableValues}}
 	}
+	for _, test := range tests {
+		{{.ReturnValues}} := {{.FuncName}}({{.Params}})
+		{{.Asserts}}
+	}
+}
 {{end}}
 `
 )
@@ -80,18 +80,26 @@ func prepForTemplate(id []intermediateData) []templateFuncData {
 }
 
 func makeStructFields(paramTypeDefs, retValTypeDefs []*typeDef) string {
-	i := 0
+	i, j := 0, 0
 	result := bytes.Buffer{}
 	for _, p := range paramTypeDefs {
+		if j > 0 {
+			result.WriteString("\n\t\t")
+		}
 		fieldName := fmt.Sprintf("f%d", i)
-		result.WriteString(p.field(fieldName) + "\n")
+		result.WriteString(p.field(fieldName))
 		i++
+		j++
 	}
 	i = 0
 	for _, r := range retValTypeDefs {
+		if j > 0 {
+			result.WriteString("\n\t\t")
+		}
 		fieldName := fmt.Sprintf("e%d", i)
-		result.WriteString(r.field(fieldName) + "\n")
+		result.WriteString(r.field(fieldName))
 		i++
+		j++
 	}
 	return result.String()
 }
@@ -139,12 +147,12 @@ func makePtrDataTable(ptrFields []string, ptrData ptrDataT) string {
 	result := bytes.Buffer{}
 	result.WriteString("ptrData := []struct{\n")
 	for _, f := range ptrFields {
-		result.WriteString("\t\t\t" + f + "\n")
+		result.WriteString("\t\t" + f + "\n")
 	}
-	result.WriteString("\t\t}{\n\t\t\t")
+	result.WriteString("\t}{\n\t\t")
 	for i, d := range ptrData {
 		if i > 0 {
-			result.WriteString("\n\t\t\t")
+			result.WriteString("\n\t\t")
 		}
 		result.WriteString("{")
 		for j, v := range d {
@@ -155,7 +163,7 @@ func makePtrDataTable(ptrFields []string, ptrData ptrDataT) string {
 		}
 		result.WriteString("},")
 	}
-	result.WriteString("\n\t\t}")
+	result.WriteString("\n\t}")
 	return result.String()
 }
 
@@ -163,7 +171,7 @@ func makeTestTableValues(testData testDataT) string {
 	result := bytes.Buffer{}
 	for i, row := range testData {
 		if i > 0 {
-			result.WriteString("\n\t\t\t")
+			result.WriteString("\n\t\t")
 		}
 		result.WriteByte('{')
 		for j, v := range row {
