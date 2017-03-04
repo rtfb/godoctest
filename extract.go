@@ -123,22 +123,36 @@ func cgToStr(cg *ast.CommentGroup) string {
 	return s.String()
 }
 
-func tokenize(b []byte) string {
+type ptrDataField struct {
+	typeName string
+}
+
+type ptrDataStruct []ptrDataField
+
+type tblDataValue struct {
+	valueExpr string
+}
+
+type dataRowT []tblDataValue
+
+type ptrDataT []dataRowT
+type testDataT []dataRowT
+
+func tokenize(b []byte, testStructFields []*typeDef) (ptrDataT, testDataT) {
+	var ptrData ptrDataT
+	var testData testDataT
 	var s scanner.Scanner
 	fset := token.NewFileSet()
 	file := fset.AddFile("", fset.Base(), len(b))
 	s.Init(file, b, nil /* no error handler */, scanner.ScanComments)
-	var tbl bytes.Buffer
-	var depth, i int
+	var depth int
+	var testDataRow dataRowT
 	for {
 		_, tok, lit := s.Scan()
 		if tok == token.EOF {
 			break
 		}
 		if tok == token.LBRACE {
-			if i > 0 && depth == 0 {
-				tbl.WriteString("\n\t\t\t")
-			}
 			depth++
 		}
 		if tok == token.RBRACE {
@@ -146,24 +160,38 @@ func tokenize(b []byte) string {
 		}
 		switch tok {
 		case token.IDENT:
-			tbl.WriteString(lit)
+			testDataRow = append(testDataRow, tblDataValue{
+				valueExpr: lit,
+			})
 		case token.STRING, token.INT, token.FLOAT, token.IMAG, token.CHAR:
-			tbl.WriteString(lit)
+			testDataRow = append(testDataRow, tblDataValue{
+				valueExpr: lit,
+			})
 		case token.COMMA:
+			testDataRow = append(testDataRow, tblDataValue{
+				valueExpr: ",",
+			})
 			if depth == 0 {
-				tbl.WriteByte(',')
-			} else {
-				tbl.WriteString(", ")
+				testData = append(testData, testDataRow)
+				testDataRow = nil
 			}
 		default:
-			tbl.WriteString(tok.String())
+			testDataRow = append(testDataRow, tblDataValue{
+				valueExpr: tok.String(),
+			})
 		}
-		i++
 	}
-	return tbl.String()
+	return ptrData, testData
 }
 
-func extractTestValues(typeDefs, retValDefs []*typeDef, cg *ast.CommentGroup) string {
+func extractTestValues(typeDefs, retValDefs []*typeDef, cg *ast.CommentGroup) (ptrDataT, testDataT) {
+	var testStructFields []*typeDef
+	testStructFields = append(testStructFields, typeDefs...)
+	testStructFields = append(testStructFields, retValDefs...)
+	return tokenize(extractTestBlock(cg), testStructFields)
+}
+
+func extractTestBlock(cg *ast.CommentGroup) []byte {
 	blockComment := strings.HasPrefix(cg.List[0].Text, "/*")
 	var s bytes.Buffer
 	if blockComment {
@@ -182,7 +210,7 @@ func extractTestValues(typeDefs, retValDefs []*typeDef, cg *ast.CommentGroup) st
 			s.WriteString(c.Text[2:])
 		}
 	}
-	return tokenize(s.Bytes())
+	return s.Bytes()
 }
 
 type intermediateData struct {
@@ -190,7 +218,8 @@ type intermediateData struct {
 	Hash           string
 	ParamTypeDefs  []*typeDef
 	RetValTypeDefs []*typeDef
-	TestValues     string
+	PtrData        ptrDataT
+	TestData       testDataT
 }
 
 func extract(fcm map[string]funcData) []intermediateData {
@@ -200,12 +229,14 @@ func extract(fcm map[string]funcData) []intermediateData {
 		i++
 		typeDefs := extractTypeDefs(v.decl.Params)
 		retValDefs := extractRetValDefs(v.decl.Results)
+		ptrData, testData := extractTestValues(typeDefs, retValDefs, v.comment)
 		result = append(result, intermediateData{
 			FuncName:       k,
 			Hash:           strconv.Itoa(i), // TODO: come up with smth better
 			ParamTypeDefs:  typeDefs,
 			RetValTypeDefs: retValDefs,
-			TestValues:     extractTestValues(typeDefs, retValDefs, v.comment),
+			PtrData:        ptrData,
+			TestData:       testData,
 		})
 	}
 	return result

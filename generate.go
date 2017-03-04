@@ -21,10 +21,11 @@ import (
 `
 	singleTestTmpl = `{{define "singleTest"}}
 	func Test_{{.FuncName}}_gdt{{.Hash}}(t *testing.T) {
+		{{print .PtrDataTable}}
 		tests := []struct{
 			{{.StructFields}}
 		}{
-			{{print .TestValues}}
+			{{print .TestTableValues}}
 		}
 		for _, test := range tests {
 			{{.ReturnValues}} := {{.FuncName}}({{.Params}})
@@ -50,27 +51,28 @@ func GenPkgTests(fc *fileComments) string {
 }
 
 type templateFuncData struct {
-	FuncName     string
-	Hash         string
-	StructFields string
-	Params       string
-	TestValues   string
-	ReturnValues string
-	Asserts      string
+	FuncName        string
+	Hash            string
+	StructFields    string
+	Params          string
+	PtrDataTable    string
+	TestTableValues string
+	ReturnValues    string
+	Asserts         string
 }
 
 func prepForTemplate(id []intermediateData) []templateFuncData {
 	var result []templateFuncData
 	for _, d := range id {
 		result = append(result, templateFuncData{
-			FuncName:     d.FuncName,
-			Hash:         d.Hash,
-			StructFields: makeStructFields(d.ParamTypeDefs, d.RetValTypeDefs),
-			Params:       makeParams(d.ParamTypeDefs),
-
-			TestValues:   d.TestValues,
-			ReturnValues: makeReturnValuesLHS(len(d.RetValTypeDefs)),
-			Asserts:      makeAsserts(len(d.RetValTypeDefs)),
+			FuncName:        d.FuncName,
+			Hash:            d.Hash,
+			StructFields:    makeStructFields(d.ParamTypeDefs, d.RetValTypeDefs),
+			Params:          makeParams(d.ParamTypeDefs),
+			PtrDataTable:    makePtrDataTable(),
+			TestTableValues: makeTestTableValues(d.TestData),
+			ReturnValues:    makeReturnValuesLHS(len(d.RetValTypeDefs)),
+			Asserts:         makeAsserts(len(d.RetValTypeDefs)),
 		})
 	}
 	return result
@@ -125,6 +127,23 @@ func makeAsserts(nReturnValues int) string {
 			result.WriteByte('\n')
 		}
 		result.WriteString(fmt.Sprintf("assert.Equal(t, test.e%d, r%d)", i, i))
+	}
+	return result.String()
+}
+
+func makePtrDataTable() string {
+	return ""
+}
+
+func makeTestTableValues(testData testDataT) string {
+	result := bytes.Buffer{}
+	for i, row := range testData {
+		if i > 0 {
+			result.WriteString("\n\t\t\t")
+		}
+		for _, v := range row {
+			result.WriteString(v.valueExpr)
+		}
 	}
 	return result.String()
 }
