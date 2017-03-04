@@ -1,6 +1,7 @@
 package testpkg
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -67,6 +68,22 @@ func fibonacci(n int) int {
 		return 1
 	}
 	return fibonacci(n-1) + fibonacci(n-2)
+}
+
+// TODO: run goimports after generation to handle cases like this, where a new
+// package gets used
+func ptrargs(pstr *string, str string, i *int, f float32) error {
+	/*
+		@test = {
+			{nil, "", 13, 42.0, errors.New("pstr is nil")},
+			{"", "x", nil, 42.0,  nil},
+		}
+	*/
+	if pstr == nil {
+		return errors.New("pstr is nil")
+	}
+	*pstr = "result"
+	return nil
 }
 
 func varargs(strs ...string) string {

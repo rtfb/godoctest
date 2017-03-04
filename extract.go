@@ -2,6 +2,7 @@ package godoctest
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/scanner"
@@ -147,48 +148,79 @@ func tokenize(b []byte, testStructFields []*typeDef) (ptrDataT, testDataT) {
 	s.Init(file, b, nil /* no error handler */, scanner.ScanComments)
 	var depth int
 	var testDataRow dataRowT
+	var ptrDataRow dataRowT
+	var valueExpr bytes.Buffer
+	var rowIdx, fieldIdx int
 	for {
 		_, tok, lit := s.Scan()
 		if tok == token.EOF {
 			break
 		}
-		if tok == token.LBRACE {
-			depth++
-		}
-		if tok == token.RBRACE {
-			depth--
-		}
 		switch tok {
+		case token.LBRACE:
+			if depth > 0 {
+				valueExpr.WriteString(tok.String())
+			}
+			depth++
+		case token.RBRACE:
+			depth--
+			if depth > 0 {
+				valueExpr.WriteString(tok.String())
+			}
 		case token.IDENT:
-			testDataRow = append(testDataRow, tblDataValue{
-				valueExpr: lit,
-			})
+			valueExpr.WriteString(lit)
 		case token.STRING, token.INT, token.FLOAT, token.IMAG, token.CHAR:
-			testDataRow = append(testDataRow, tblDataValue{
-				valueExpr: lit,
-			})
+			valueExpr.WriteString(lit)
 		case token.COMMA:
-			testDataRow = append(testDataRow, tblDataValue{
-				valueExpr: ",",
-			})
+			fieldType := testStructFields[fieldIdx]
+			if fieldType.isPtr {
+				if valueExpr.String() == "nil" {
+					testDataRow = append(testDataRow, tblDataValue{
+						valueExpr: "nil",
+					})
+				} else {
+					ptrDataRow = append(ptrDataRow, tblDataValue{
+						valueExpr: fmt.Sprintf("f%d: %s", fieldIdx, valueExpr.String()),
+					})
+					testDataRow = append(testDataRow, tblDataValue{
+						valueExpr: fmt.Sprintf("&ptrData[%d].f%d", rowIdx, fieldIdx),
+					})
+				}
+			} else {
+				testDataRow = append(testDataRow, tblDataValue{
+					valueExpr: valueExpr.String(),
+				})
+			}
 			if depth == 0 {
 				testData = append(testData, testDataRow)
 				testDataRow = nil
+				ptrData = append(ptrData, ptrDataRow)
+				ptrDataRow = nil
+				rowIdx++
 			}
+			valueExpr.Reset()
+			fieldIdx = (fieldIdx + 1) % len(testStructFields)
 		default:
-			testDataRow = append(testDataRow, tblDataValue{
-				valueExpr: tok.String(),
-			})
+			valueExpr.WriteString(tok.String())
 		}
 	}
 	return ptrData, testData
 }
 
-func extractTestValues(typeDefs, retValDefs []*typeDef, cg *ast.CommentGroup) (ptrDataT, testDataT) {
-	var testStructFields []*typeDef
-	testStructFields = append(testStructFields, typeDefs...)
-	testStructFields = append(testStructFields, retValDefs...)
-	return tokenize(extractTestBlock(cg), testStructFields)
+func extractTestValues(testStructFields []*typeDef, cg *ast.CommentGroup) ([]string, ptrDataT, testDataT) {
+	ptrFields := extractPtrFields(testStructFields)
+	ptrData, testData := tokenize(extractTestBlock(cg), testStructFields)
+	return ptrFields, ptrData, testData
+}
+
+func extractPtrFields(testStructFields []*typeDef) []string {
+	var ptrFields []string
+	for i, f := range testStructFields {
+		if f.isPtr {
+			ptrFields = append(ptrFields, fmt.Sprintf("f%d %s", i, f.typeName))
+		}
+	}
+	return ptrFields
 }
 
 func extractTestBlock(cg *ast.CommentGroup) []byte {
@@ -218,6 +250,7 @@ type intermediateData struct {
 	Hash           string
 	ParamTypeDefs  []*typeDef
 	RetValTypeDefs []*typeDef
+	PtrFields      []string
 	PtrData        ptrDataT
 	TestData       testDataT
 }
@@ -229,12 +262,16 @@ func extract(fcm map[string]funcData) []intermediateData {
 		i++
 		typeDefs := extractTypeDefs(v.decl.Params)
 		retValDefs := extractRetValDefs(v.decl.Results)
-		ptrData, testData := extractTestValues(typeDefs, retValDefs, v.comment)
+		var testStructFields []*typeDef
+		testStructFields = append(testStructFields, typeDefs...)
+		testStructFields = append(testStructFields, retValDefs...)
+		ptrFields, ptrData, testData := extractTestValues(testStructFields, v.comment)
 		result = append(result, intermediateData{
 			FuncName:       k,
 			Hash:           strconv.Itoa(i), // TODO: come up with smth better
 			ParamTypeDefs:  typeDefs,
 			RetValTypeDefs: retValDefs,
+			PtrFields:      ptrFields,
 			PtrData:        ptrData,
 			TestData:       testData,
 		})

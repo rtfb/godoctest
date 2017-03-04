@@ -11,6 +11,7 @@ const (
 	testFileTmpl = `package {{.PkgName}}
 
 import (
+	"errors"
 	"testing"
 	"github.com/stretchr/testify/assert"
 )
@@ -69,7 +70,7 @@ func prepForTemplate(id []intermediateData) []templateFuncData {
 			Hash:            d.Hash,
 			StructFields:    makeStructFields(d.ParamTypeDefs, d.RetValTypeDefs),
 			Params:          makeParams(d.ParamTypeDefs),
-			PtrDataTable:    makePtrDataTable(),
+			PtrDataTable:    makePtrDataTable(d.PtrFields, d.PtrData),
 			TestTableValues: makeTestTableValues(d.TestData),
 			ReturnValues:    makeReturnValuesLHS(len(d.RetValTypeDefs)),
 			Asserts:         makeAsserts(len(d.RetValTypeDefs)),
@@ -131,8 +132,31 @@ func makeAsserts(nReturnValues int) string {
 	return result.String()
 }
 
-func makePtrDataTable() string {
-	return ""
+func makePtrDataTable(ptrFields []string, ptrData ptrDataT) string {
+	if ptrFields == nil {
+		return ""
+	}
+	result := bytes.Buffer{}
+	result.WriteString("ptrData := []struct{\n")
+	for _, f := range ptrFields {
+		result.WriteString("\t\t\t" + f + "\n")
+	}
+	result.WriteString("\t\t}{\n\t\t\t")
+	for i, d := range ptrData {
+		if i > 0 {
+			result.WriteString("\n\t\t\t")
+		}
+		result.WriteString("{")
+		for j, v := range d {
+			if j > 0 {
+				result.WriteString(", ")
+			}
+			result.WriteString(v.valueExpr)
+		}
+		result.WriteString("},")
+	}
+	result.WriteString("\n\t\t}")
+	return result.String()
 }
 
 func makeTestTableValues(testData testDataT) string {
@@ -141,9 +165,14 @@ func makeTestTableValues(testData testDataT) string {
 		if i > 0 {
 			result.WriteString("\n\t\t\t")
 		}
-		for _, v := range row {
+		result.WriteByte('{')
+		for j, v := range row {
+			if j > 0 {
+				result.WriteString(", ")
+			}
 			result.WriteString(v.valueExpr)
 		}
+		result.WriteString("},")
 	}
 	return result.String()
 }
