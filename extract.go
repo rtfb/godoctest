@@ -151,7 +151,6 @@ type intermediateData struct {
 	ParamTypeDefs  []*typeDef
 	RetValTypeDefs []*typeDef
 	TestValues     string
-	ReturnValues   string
 	Asserts        string
 }
 
@@ -161,13 +160,12 @@ func extract(fcm map[string]funcData) []intermediateData {
 	for k, v := range fcm {
 		i++
 		typeDefs := extractTypeDefs(v.decl.Params)
-		retValDefs, retVals, asserts := extractRetValDefs(v.decl.Results)
+		retValDefs, asserts := extractRetValDefs(v.decl.Results)
 		result = append(result, intermediateData{
 			FuncName:       k,
 			Hash:           strconv.Itoa(i), // TODO: come up with smth better
 			ParamTypeDefs:  typeDefs,
 			RetValTypeDefs: retValDefs,
-			ReturnValues:   retVals,
 			Asserts:        asserts,
 			TestValues:     extractTestValues(v.comment),
 		})
@@ -183,18 +181,15 @@ func extractTypeDefs(params *ast.FieldList) []*typeDef {
 	return result
 }
 
-func extractRetValDefs(results *ast.FieldList) ([]*typeDef, string, string) {
+func extractRetValDefs(results *ast.FieldList) ([]*typeDef, string) {
 	var retValDefs []*typeDef
-	var resultList []string
 	var asserts []string
 	for i, f := range results.List {
 		retValDefs = append(retValDefs, makeTypeDef(f.Type))
-		resultList = append(resultList, fmt.Sprintf("r%d", i))
 		asserts = append(asserts, fmt.Sprintf("assert.Equal(t, test.e%d, r%d)", i, i))
 	}
-	j2 := strings.Join(resultList, ", ")
 	j3 := strings.Join(asserts, "\n")
-	return retValDefs, j2, j3
+	return retValDefs, j3
 }
 
 type typeDef struct {

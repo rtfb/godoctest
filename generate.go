@@ -3,6 +3,7 @@ package godoctest
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"text/template"
 )
 
@@ -68,7 +69,7 @@ func prepForTemplate(id []intermediateData) []templateFuncData {
 			Params:       makeParams(d.ParamTypeDefs),
 
 			TestValues:   d.TestValues,
-			ReturnValues: d.ReturnValues,
+			ReturnValues: makeReturnValuesLHS(len(d.RetValTypeDefs)),
 			Asserts:      d.Asserts,
 		})
 	}
@@ -96,9 +97,23 @@ func makeParams(paramTypeDefs []*typeDef) string {
 	i := 0
 	result := bytes.Buffer{}
 	for _, p := range paramTypeDefs {
+		if i > 0 {
+			result.WriteString(", ")
+		}
 		fieldName := fmt.Sprintf("f%d", i)
-		result.WriteString(p.arg(fieldName) + ", ")
+		result.WriteString(p.arg(fieldName))
 		i++
+	}
+	return result.String()
+}
+
+func makeReturnValuesLHS(nParams int) string {
+	result := bytes.Buffer{}
+	for i := 0; i < nParams; i++ {
+		if i > 0 {
+			result.WriteString(", ")
+		}
+		result.WriteString("r" + strconv.Itoa(i))
 	}
 	return result.String()
 }
