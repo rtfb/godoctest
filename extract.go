@@ -261,7 +261,7 @@ func extract(fcm map[string]funcData) []intermediateData {
 	for k, v := range fcm {
 		i++
 		typeDefs := extractTypeDefs(v.decl.Params)
-		retValDefs := extractRetValDefs(v.decl.Results)
+		retValDefs := extractTypeDefs(v.decl.Results)
 		var testStructFields []*typeDef
 		testStructFields = append(testStructFields, typeDefs...)
 		testStructFields = append(testStructFields, retValDefs...)
@@ -285,14 +285,6 @@ func extractTypeDefs(params *ast.FieldList) []*typeDef {
 		result = append(result, makeTypeDef(f.Type))
 	}
 	return result
-}
-
-func extractRetValDefs(results *ast.FieldList) []*typeDef {
-	var retValDefs []*typeDef
-	for _, f := range results.List {
-		retValDefs = append(retValDefs, makeTypeDef(f.Type))
-	}
-	return retValDefs
 }
 
 type typeDef struct {
