@@ -350,33 +350,3 @@ func makeTypeDef(typeExpr ast.Expr) *typeDef {
 		panic("TODO")
 	}
 }
-
-// XXX: no longer used
-// TODO: it can be pointers, variadic params and such. Lots of work remaining
-// here. But maybe I'm overcomplicating? Maybe just copy source code bytes from
-// the range [typeExpr.Pos():typeExpr.End()]?
-func makeTypeStr(typeExpr ast.Expr) string {
-	switch typedExpr := typeExpr.(type) {
-	case *ast.Ident:
-		return typedExpr.Name
-	case *ast.StarExpr:
-		switch typedExpr2 := typedExpr.X.(type) {
-		case *ast.Ident:
-			// TODO: looks like to handle pointers I'll need to duplicate each
-			// field, having a fN for the value and a pN for a pointer to it,
-			// allowing pN to be nil.
-			return "*" + typedExpr2.Name
-		default:
-			panic("Should this be handled?")
-		}
-	case *ast.Ellipsis:
-		switch typedExpr2 := typedExpr.Elt.(type) {
-		case *ast.Ident:
-			return "[]" + typedExpr2.Name
-		default:
-			panic("Should this be handled?")
-		}
-	default:
-		panic("TODO")
-	}
-}
