@@ -2,13 +2,14 @@ package main
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 
 	"github.com/rtfb/godoctest"
 )
 
-func runGoTest(workdir string) {
+func runGoTest(workdir string) error {
 	cmd := exec.Command("go", "test")
 	cmd.Dir = workdir
 	cmd.Stdout = os.Stdout
@@ -19,18 +20,25 @@ func runGoTest(workdir string) {
 		case *exec.ExitError:
 			println(typedErr.String())
 		default:
-			panic(err)
 		}
+		return err
 	}
+	return nil
 }
 
 func main() {
 	e := godoctest.NewExtractor()
 	fcs := e.Run("testdata")
-	testCode := godoctest.GenPkgTests(fcs[0])
-	err := ioutil.WriteFile(fcs[0].TestFileName(), []byte(testCode), 0666)
+	testCode, err := godoctest.GenPkgTests(fcs[0])
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to generate test code: %s\n", err)
 	}
-	runGoTest("testdata")
+	err = ioutil.WriteFile(fcs[0].TestFileName(), testCode, 0666)
+	if err != nil {
+		log.Fatalf("Failed to write the generated tests file: %s\n", err)
+	}
+	err = runGoTest("testdata")
+	if err != nil {
+		log.Fatalf("Test execution failed: %s\n", err)
+	}
 }

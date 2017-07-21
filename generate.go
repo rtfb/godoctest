@@ -37,7 +37,8 @@ func Test_{{.FuncName}}_gdt{{.Hash}}(t *testing.T) {
 `
 )
 
-func GenPkgTests(fc *fileComments) string {
+// GenPkgTests generates the test code.
+func GenPkgTests(fc *fileComments) ([]byte, error) {
 	t := template.Must(template.New("File tests template").Parse(testFileTmpl))
 	t = template.Must(t.Parse(singleTestTmpl))
 	var buf bytes.Buffer
@@ -45,10 +46,7 @@ func GenPkgTests(fc *fileComments) string {
 		"PkgName":      fc.pkg.Name,
 		"FuncComments": prepForTemplate(extract(fc.funcComments)),
 	})
-	if err != nil {
-		panic(err)
-	}
-	return buf.String()
+	return buf.Bytes(), err
 }
 
 type templateFuncData struct {
