@@ -11,10 +11,33 @@ const (
 	testFileTmpl = `package {{.PkgName}}
 
 import (
+	"bytes"
 	"errors"
+	"reflect"
 	"testing"
-	"github.com/stretchr/testify/assert"
 )
+
+
+// ObjectsAreEqual determines if two objects are considered equal.
+//
+// This function does no assertion of any kind.
+//
+// This function is copied verbatim from github.com/stretchr/testify/assert
+func ObjectsAreEqual(expected, actual interface{}) bool {
+	if expected == nil || actual == nil {
+		return expected == actual
+	}
+	if exp, ok := expected.([]byte); ok {
+		act, ok := actual.([]byte)
+		if !ok {
+			return false
+		} else if exp == nil || act == nil {
+			return exp == nil && act == nil
+		}
+		return bytes.Equal(exp, act)
+	}
+	return reflect.DeepEqual(expected, actual)
+}
 
 {{range .FuncComments}}
 	{{template "singleTest" .}}
@@ -133,7 +156,10 @@ func makeAsserts(nReturnValues int) string {
 		if i > 0 {
 			result.WriteByte('\n')
 		}
-		result.WriteString(fmt.Sprintf("assert.Equal(t, test.e%d, r%d)", i, i))
+		tmpl := `if !ObjectsAreEqual(test.e%d, r%d) {
+			t.Errorf("Expected %%q, but got %%q", test.e%d, r%d)
+		}`
+		result.WriteString(fmt.Sprintf(tmpl, i, i, i, i))
 	}
 	return result.String()
 }
