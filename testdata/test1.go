@@ -14,7 +14,7 @@ func untestFunc() {
 
 func testFunc1(param string) string {
 	//
-	//  @test = {
+	//  []test{
 	//  	{"", ""},
 	//  }
 	//
@@ -23,7 +23,7 @@ func testFunc1(param string) string {
 
 func testFunc2(param string) string {
 	/*
-		@test = {
+		[]test{
 			{"", ""},
 			{"foo", "bar"},
 			{"baz", "quux"},
@@ -44,7 +44,7 @@ func multiline(aVeryLongParameterOne string, aVeryLongParameterTwo float64,
 	aVeryLongParameterThree string) (veryValuableReturnValue string,
 	errDamn error) {
 	/*
-		@test = {
+		[]test{
 			{"param1", 3.14, "param2", "return value", nil},
 		}
 	*/
@@ -53,7 +53,7 @@ func multiline(aVeryLongParameterOne string, aVeryLongParameterTwo float64,
 
 func fibonacci(n int) int {
 	/*
-		@test = {
+		[]test{
 			{1, 1},
 			{2, 1},
 			{3, 2},
@@ -74,7 +74,7 @@ func fibonacci(n int) int {
 // package gets used
 func ptrargs(pstr *string, str string, i *int, f float32) error {
 	/*
-		@test = {
+		[]test{
 			{nil, "", 13, 42.0, errors.New("pstr is nil")},
 			{"", "x", nil, 42.0,  nil},
 		}
@@ -88,7 +88,7 @@ func ptrargs(pstr *string, str string, i *int, f float32) error {
 
 func varargs(strs ...string) string {
 	/*
-		@test = {
+		[]test{
 			{[]string{}, ""},
 			{[]string{"a"}, "a"},
 			{[]string{"a", "b"}, "a b"},

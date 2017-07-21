@@ -61,7 +61,7 @@ type funcData struct {
 
 func containsTestAnnotation(cg *ast.CommentGroup) bool {
 	for _, c := range cg.List {
-		if strings.Contains(c.Text, "@test") {
+		if strings.Contains(c.Text, "[]test{") {
 			return true
 		}
 	}
@@ -229,11 +229,11 @@ func extractTestBlock(cg *ast.CommentGroup) []byte {
 	if blockComment {
 		s1 := strings.TrimPrefix(cg.List[0].Text, "/*")
 		s2 := strings.TrimSuffix(s1, "*/")
-		s3 := strings.TrimPrefix(strings.Trim(s2, " \t\n"), "@test = {")
+		s3 := strings.TrimPrefix(strings.Trim(s2, " \t\n"), "[]test{")
 		s.WriteString(strings.TrimSuffix(strings.Trim(s3, " \t\n"), "}"))
 	} else {
 		for _, c := range cg.List {
-			if strings.Contains(c.Text, "@test =") {
+			if strings.Contains(c.Text, "[]test{") {
 				continue
 			}
 			if strings.Trim(c.Text[2:], " ") == "}" {

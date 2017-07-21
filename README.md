@@ -6,7 +6,7 @@ godoctest
 table-driven tests.
 
 Inside a function, immediately following the declaration, write a comment of the
-form `@test = <your test table>`. Each row of the table should consist of N + M
+form `[]test{<your test table>}`. Each row of the table should consist of N + M
 elements, where N is the number of parameters and M is the number of return
 values. `godoctest` derives the types for the test table from the function
 declaration and generates all the usual boilerplate for a test function. See the
@@ -17,7 +17,7 @@ Here's your source code:
 ``` go
 func fibonacci(n int) int {
 	/*
-		@test = {
+		[]test{
 			{1, 1},
 			{2, 1},
 			{3, 2},
