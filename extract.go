@@ -14,16 +14,20 @@ import (
 	"strings"
 )
 
+// Extractor encapsulates the internal details of extracting test snippets from
+// source code files.
 type Extractor struct {
 	fset *token.FileSet
 }
 
+// NewExtractor creates Extractor.
 func NewExtractor() *Extractor {
 	return &Extractor{
 		fset: token.NewFileSet(),
 	}
 }
 
+// Run performs test snippet extraction from a specified directory.
 func (e *Extractor) Run(dir string) []*fileComments {
 	// include tells parser.ParseDir which files to include.
 	include := func(info os.FileInfo) bool {
