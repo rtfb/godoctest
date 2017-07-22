@@ -28,7 +28,7 @@ func NewExtractor() *Extractor {
 }
 
 // Run performs test snippet extraction from a specified directory.
-func (e *Extractor) Run(dir string) []*fileComments {
+func (e *Extractor) Run(dir string) []*FileComments {
 	// include tells parser.ParseDir which files to include.
 	include := func(info os.FileInfo) bool {
 		n := info.Name()
@@ -43,7 +43,9 @@ func (e *Extractor) Run(dir string) []*fileComments {
 	return fcs
 }
 
-type fileComments struct {
+// FileComments represent a collection of comment sections of a single source
+// file.
+type FileComments struct {
 	pkg          *ast.Package
 	fileName     string
 	file         *ast.File
@@ -51,7 +53,8 @@ type fileComments struct {
 	funcComments map[string]funcData
 }
 
-func (fc *fileComments) TestFileName() string {
+// TestFileName returns the file name for the generated test file.
+func (fc *FileComments) TestFileName() string {
 	fn := fc.fileName
 	ext := path.Ext(fn)
 	return fn[:len(fn)-len(ext)] + "_gdt_test.go"
@@ -73,11 +76,11 @@ func containsTestAnnotation(cg *ast.CommentGroup) bool {
 	return false
 }
 
-func extractComments(pkgs map[string]*ast.Package, fs *token.FileSet) []*fileComments {
-	var fcs []*fileComments
+func extractComments(pkgs map[string]*ast.Package, fs *token.FileSet) []*FileComments {
+	var fcs []*FileComments
 	for _, v := range pkgs {
 		for fk, fv := range v.Files {
-			var fc fileComments
+			var fc FileComments
 			fc.comments = map[int]*ast.CommentGroup{}
 			fc.pkg = v
 			fc.fileName = fk
@@ -94,7 +97,7 @@ func extractComments(pkgs map[string]*ast.Package, fs *token.FileSet) []*fileCom
 	return fcs
 }
 
-func extractFuncs(fcs []*fileComments, fs *token.FileSet) {
+func extractFuncs(fcs []*FileComments, fs *token.FileSet) {
 	for _, fc := range fcs {
 		fc.funcComments = map[string]funcData{}
 		for _, d := range fc.file.Decls {

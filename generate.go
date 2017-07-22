@@ -62,7 +62,7 @@ func Test_{{.FuncName}}_gdt{{.Hash}}(t *testing.T) {
 )
 
 // GenPkgTests generates the test code.
-func GenPkgTests(fc *fileComments) ([]byte, error) {
+func GenPkgTests(fc *FileComments) ([]byte, error) {
 	t := template.Must(template.New("File tests template").Parse(testFileTmpl))
 	t = template.Must(t.Parse(singleTestTmpl))
 	var buf bytes.Buffer
