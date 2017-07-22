@@ -7,7 +7,6 @@ import (
 	"go/parser"
 	"go/scanner"
 	"go/token"
-	"log"
 	"os"
 	"path"
 	"strconv"
@@ -28,7 +27,7 @@ func NewExtractor() *Extractor {
 }
 
 // Run performs test snippet extraction from a specified directory.
-func (e *Extractor) Run(dir string) []*FileComments {
+func (e *Extractor) Run(dir string) ([]*FileComments, error) {
 	// include tells parser.ParseDir which files to include.
 	include := func(info os.FileInfo) bool {
 		n := info.Name()
@@ -36,11 +35,11 @@ func (e *Extractor) Run(dir string) []*FileComments {
 	}
 	pkgs, err := parser.ParseDir(e.fset, dir, include, parser.ParseComments)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	fcs := extractComments(pkgs, e.fset)
 	extractFuncs(fcs, e.fset)
-	return fcs
+	return fcs, nil
 }
 
 // FileComments represent a collection of comment sections of a single source

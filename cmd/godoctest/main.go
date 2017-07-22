@@ -28,7 +28,10 @@ func runGoTest(workdir string) error {
 
 func main() {
 	e := godoctest.NewExtractor()
-	fcs := e.Run("testdata")
+	fcs, err := e.Run("testdata")
+	if err != nil {
+		log.Fatalf("Failed to extract godoctests: %s\n", err)
+	}
 	testCode, err := godoctest.GenPkgTests(fcs[0])
 	if err != nil {
 		log.Fatalf("Failed to generate test code: %s\n", err)
