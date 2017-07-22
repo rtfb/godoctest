@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"text/template"
+
+	"golang.org/x/tools/imports"
 )
 
 const (
@@ -12,7 +14,6 @@ const (
 
 import (
 	"bytes"
-	"errors"
 	"reflect"
 	"testing"
 )
@@ -69,7 +70,10 @@ func GenPkgTests(fc *fileComments) ([]byte, error) {
 		"PkgName":      fc.pkg.Name,
 		"FuncComments": prepForTemplate(extract(fc.funcComments)),
 	})
-	return buf.Bytes(), err
+	if err != nil {
+		return nil, err
+	}
+	return imports.Process(fc.TestFileName(), buf.Bytes(), nil)
 }
 
 type templateFuncData struct {

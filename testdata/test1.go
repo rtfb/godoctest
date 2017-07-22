@@ -70,8 +70,6 @@ func fibonacci(n int) int {
 	return fibonacci(n-1) + fibonacci(n-2)
 }
 
-// TODO: run goimports after generation to handle cases like this, where a new
-// package gets used
 func ptrargs(pstr *string, str string, i *int, f float32) error {
 	/*
 		[]test{
