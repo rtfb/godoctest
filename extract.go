@@ -27,7 +27,8 @@ func NewExtractor() *Extractor {
 func (e *Extractor) Run(dir string) []*fileComments {
 	// include tells parser.ParseDir which files to include.
 	include := func(info os.FileInfo) bool {
-		return strings.HasSuffix(info.Name(), ".go")
+		n := info.Name()
+		return strings.HasSuffix(n, ".go") && !strings.HasSuffix(n, "_test.go")
 	}
 	pkgs, err := parser.ParseDir(e.fset, dir, include, parser.ParseComments)
 	if err != nil {
